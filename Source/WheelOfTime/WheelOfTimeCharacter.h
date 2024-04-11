@@ -12,6 +12,8 @@ class UCameraComponent;
 class USpringArmComponent;
 class UGameplayAbility;
 class UWOFHealthWidgetComponent;
+class UWOFAttributeSet;
+class UGameplayEffect;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartHealthInitDelegateSignature);
 
@@ -23,18 +25,15 @@ class AWheelOfTimeCharacter : public ACharacter, public IAbilitySystemInterface
 public:
 	AWheelOfTimeCharacter();
 
-	virtual void Tick(float DeltaSeconds) override;
-
 	UCameraComponent* GetTopDownCameraComponent() const;
 
 	USpringArmComponent* GetCameraBoom() const;
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	virtual void PossessedBy(AController* NewController) override;
+	UWOFAttributeSet* GetAttributeSet() const;
 
-	UPROPERTY(VisibleAnywhere, BlueprintAssignable)
-	FOnStartHealthInitDelegateSignature OnStartHealthInitDelegate;
+	virtual void PossessedBy(AController* NewController) override;
 
 protected:
 	void SetupHealthBar();
@@ -42,9 +41,16 @@ protected:
 	void InitAbilities();
 
 private:
-	void InitAbilityAttributes();
-	void SetWidgetComponentRotation();
+	void InitAttributes();
+	void SubscribeToDelegates();
+	void UnSubscribeFromDelegates();
+	void OnHealthChanged(const FOnAttributeChangeData& InData);
 
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintAssignable)
+	FOnStartHealthInitDelegateSignature OnStartHealthInitDelegate;
+
+private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> TopDownCameraComponent;
 
@@ -54,10 +60,13 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Abilities, meta = (AllowPrivateAccess = "true"))
 	TArray<TSubclassOf<UGameplayAbility>> Abilities;
 
-	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<FGameplayAbilitySpecHandle> AbilitySpecHandles;
-
 	UPROPERTY(EditDefaultsOnly)
 	TObjectPtr<UWOFHealthWidgetComponent> HealthWidgetComponent;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayEffect> DefaultAttributes;
+
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TMap<TSubclassOf<UGameplayAbility>, FGameplayAbilitySpecHandle> GivenAbilities;
 };
 

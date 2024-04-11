@@ -18,6 +18,7 @@ public:
 protected:
 	void BeginPlay() override;
 
+protected:
 	UPROPERTY()
 	UWOFSpawnerManagerComponent* SpawnerManager;
 };

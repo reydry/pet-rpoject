@@ -9,6 +9,7 @@
 AWOFPlayerState::AWOFPlayerState(const FObjectInitializer& ObjectInitializer)
 {
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
+	AttributeSet = CreateDefaultSubobject<UWOFAttributeSet>("AttributeSet");
 }
 
 UAbilitySystemComponent* AWOFPlayerState::GetAbilitySystemComponent() const
@@ -23,10 +24,15 @@ void AWOFPlayerState::BeginPlay()
 
 void AWOFPlayerState::SetupAbilitySystem()
 {
-	const UAbilitySystemComponent* AbilitySystem = GetAbilitySystemComponent();
+	UAbilitySystemComponent* AbilitySystem = GetAbilitySystemComponent();
 
 	if (IsValid(AbilitySystem))
 	{
-		AttributeSet = AbilitySystem->GetSet<UWOFAttributeSet>();
+		AbilitySystem->AddAttributeSetSubobject(AttributeSet.Get());
 	}
+}
+
+UWOFAttributeSet* AWOFPlayerState::GetAttributeSet() const
+{
+	return AttributeSet;
 }

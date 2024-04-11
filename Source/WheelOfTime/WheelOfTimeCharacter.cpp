@@ -9,45 +9,52 @@
 #include "Core/PlayerState/WOFPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "Kismet/KismetMathLibrary.h"
-
+#include "Abilities/WOFAttributeSet.h"
 
 AWheelOfTimeCharacter::AWheelOfTimeCharacter()
 {
-	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+	if (IsValid(GetCapsuleComponent()))
+	{
+		GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+	}
 
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
-	GetCharacterMovement()->bConstrainToPlane = true;
-	GetCharacterMovement()->bSnapToPlaneAtStart = true;
+	if (IsValid(GetCharacterMovement()))
+	{
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
+		GetCharacterMovement()->bConstrainToPlane = true;
+		GetCharacterMovement()->bSnapToPlaneAtStart = true;
+	}
 
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->SetUsingAbsoluteRotation(true);
-	CameraBoom->TargetArmLength = 800.f;
-	CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
-	CameraBoom->bDoCollisionTest = false;
+	if (!IsValid(CameraBoom))
+	{
+		CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+		CameraBoom->SetupAttachment(RootComponent);
+		CameraBoom->SetUsingAbsoluteRotation(true);
+		CameraBoom->TargetArmLength = 800.f;
+		CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
+		CameraBoom->bDoCollisionTest = false;
+	}
 
-	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
-	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	TopDownCameraComponent->bUsePawnControlRotation = false; 
+	if (!IsValid(TopDownCameraComponent))
+	{
+		TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
+		TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+		TopDownCameraComponent->bUsePawnControlRotation = false;
+	}
 
-	HealthWidgetComponent = CreateDefaultSubobject<UWOFHealthWidgetComponent>(TEXT("HealthWidgetComponent"));
-	HealthWidgetComponent->SetupAttachment(GetMesh());
+	if (!IsValid(HealthWidgetComponent))
+	{
+		HealthWidgetComponent = CreateDefaultSubobject<UWOFHealthWidgetComponent>(TEXT("HealthWidgetComponent"));
+		HealthWidgetComponent->SetupAttachment(GetMesh());
+	}
 
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
-}
-
-void AWheelOfTimeCharacter::Tick(float DeltaSeconds)
-{
-    Super::Tick(DeltaSeconds);
-
-	SetWidgetComponentRotation();
 }
 
 UCameraComponent* AWheelOfTimeCharacter::GetTopDownCameraComponent() const
@@ -72,21 +79,58 @@ UAbilitySystemComponent* AWheelOfTimeCharacter::GetAbilitySystemComponent() cons
 	return OwningPlayerState->GetAbilitySystemComponent();
 }
 
+UWOFAttributeSet* AWheelOfTimeCharacter::GetAttributeSet() const
+{
+	const AWOFPlayerState* OwningPlayerState = GetPlayerState<AWOFPlayerState>();
+
+	if (!IsValid(OwningPlayerState))
+	{
+		return nullptr;
+	}
+
+	return OwningPlayerState->GetAttributeSet();
+}
+
 void AWheelOfTimeCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	InitAbilityAttributes();
-	SetupHealthBar();
 	InitAbilities();
+	InitAttributes();
+	SetupHealthBar();
+	SubscribeToDelegates();
 }
 
 void AWheelOfTimeCharacter::SetupHealthBar()
 {
-	HealthWidgetComponent->InitHealthInfo();
+	HealthWidgetComponent->InitComponentData(GetAbilitySystemComponent());
 }
 
 void AWheelOfTimeCharacter::InitAbilities()
+{
+	AWOFPlayerState* MyPlayerState = GetPlayerState<AWOFPlayerState>();
+	UAbilitySystemComponent* AbilitySystem = GetAbilitySystemComponent();
+
+	if (!IsValid(AbilitySystem) || !IsValid(MyPlayerState))
+	{
+		return;
+	}
+
+	MyPlayerState->SetupAbilitySystem();
+
+	for (const TSubclassOf<UGameplayAbility> Ability : Abilities)
+	{
+		FGameplayAbilitySpecHandle AbilityHandle(AbilitySystem->GiveAbility(
+			FGameplayAbilitySpec(Ability.GetDefaultObject(), 1, INDEX_NONE, this))
+		);
+
+		GivenAbilities.Add(Ability, AbilityHandle);
+	}
+
+	AbilitySystem->InitAbilityActorInfo(this, this);
+}
+
+void AWheelOfTimeCharacter::InitAttributes()
 {
 	UAbilitySystemComponent* AbilitySystem = GetAbilitySystemComponent();
 
@@ -95,38 +139,48 @@ void AWheelOfTimeCharacter::InitAbilities()
 		return;
 	}
 
-	for (const TSubclassOf<UGameplayAbility> Ability : Abilities)
+	FGameplayEffectContextHandle EffectContext = AbilitySystem->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle NewHandle = AbilitySystem->MakeOutgoingSpec(DefaultAttributes, 1, EffectContext);
+
+	if (NewHandle.IsValid())
 	{
-		AbilitySpecHandles.Add(
-			AbilitySystem->GiveAbility(
-					FGameplayAbilitySpec(Ability.GetDefaultObject(), 1, INDEX_NONE, this))
-		);
+		AbilitySystem->ApplyGameplayEffectSpecToSelf(*NewHandle.Data.Get());
 	}
 }
 
-void AWheelOfTimeCharacter::InitAbilityAttributes()
+void AWheelOfTimeCharacter::SubscribeToDelegates()
 {
-	AWOFPlayerState* OwningPlayerState = GetPlayerState<AWOFPlayerState>();
-
-	if (IsValid(OwningPlayerState))
-	{
-		OwningPlayerState->SetupAbilitySystem();
-	}
-
 	UAbilitySystemComponent* AbilitySystem = GetAbilitySystemComponent();
+	const UWOFAttributeSet* AttributeSet = GetAttributeSet();
 
-	if (AbilitySystem)
+	if (!IsValid(AbilitySystem) || !IsValid(AttributeSet))
 	{
-		AbilitySystem->InitAbilityActorInfo(this, this);
+		return;
 	}
+	
+	AbilitySystem->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &ThisClass::OnHealthChanged);
 }
 
-void AWheelOfTimeCharacter::SetWidgetComponentRotation()
+void AWheelOfTimeCharacter::UnSubscribeFromDelegates()
 {
-	HealthWidgetComponent->SetWorldRotation(
-		UKismetMathLibrary::FindLookAtRotation(
-			HealthWidgetComponent->GetComponentLocation(),
-			TopDownCameraComponent->GetComponentLocation()
-		)
-	);
+	UAbilitySystemComponent* AbilitySystem = GetAbilitySystemComponent();
+	const UWOFAttributeSet* AttributeSet = GetAttributeSet();
+
+	if (!IsValid(AbilitySystem) || !IsValid(AttributeSet))
+	{
+		return;
+	}
+
+	AbilitySystem->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).RemoveAll(this);
+}
+
+void AWheelOfTimeCharacter::OnHealthChanged(const FOnAttributeChangeData& InData)
+{
+	if (InData.NewValue <= 0.0)
+	{
+		UnSubscribeFromDelegates();
+		Destroy();
+	}
 }

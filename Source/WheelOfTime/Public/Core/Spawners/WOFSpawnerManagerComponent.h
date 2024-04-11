@@ -17,8 +17,7 @@ public:
 
 	void SpawnEnemies();
 	void InitSpawners();
-private:
-	
 
+private:
 	TArray<TWeakObjectPtr<AActor>> Spawners;
 };

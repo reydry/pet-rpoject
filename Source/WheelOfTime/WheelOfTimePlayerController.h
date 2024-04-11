@@ -27,7 +27,9 @@ protected:
 	virtual void BeginPlay() override;
 
 	void MoveInput(const FInputActionValue& InputActionValue);
-	void LookInput();
+
+	UFUNCTION(BlueprintCallable)
+	void LookInput(const FInputActionValue& InputActionValue);
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
@@ -35,4 +37,7 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* Movement;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* Look;
 };

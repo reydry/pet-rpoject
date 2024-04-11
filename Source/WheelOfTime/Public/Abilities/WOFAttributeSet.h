@@ -27,6 +27,7 @@ public:
 
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
+	UPROPERTY(VisibleAnywhere, BlueprintAssignable)
 	FOnDeathDelegateSignature OnDeathDelegate;
 
 protected:
@@ -35,8 +36,4 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FGameplayAttributeData Level;
-
-private:
-	
-
 };

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
+#include "Abilities/WOFAttributeSet.h"
 #include "WOFPlayerState.generated.h"
 
 class UWOFAttributeSet;
@@ -21,6 +22,9 @@ public:
 
 	void SetupAbilitySystem();
 
+	UFUNCTION(BlueprintPure)
+	UWOFAttributeSet* GetAttributeSet() const;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -28,5 +32,6 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
-	TObjectPtr<const UWOFAttributeSet> AttributeSet;
+	UPROPERTY()
+	TObjectPtr<UWOFAttributeSet> AttributeSet;
 };

@@ -15,8 +15,6 @@ AWheelOfTimePlayerController::AWheelOfTimePlayerController()
 void AWheelOfTimePlayerController::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
-	LookInput();
 }
 
 void AWheelOfTimePlayerController::BeginPlay()
@@ -36,6 +34,7 @@ void AWheelOfTimePlayerController::SetupInputComponent()
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 	{
 		EnhancedInputComponent->BindAction(Movement, ETriggerEvent::Triggered, this, &ThisClass::MoveInput);
+		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ThisClass::LookInput);
 	}
 }
 
@@ -64,7 +63,7 @@ void AWheelOfTimePlayerController::MoveInput(const FInputActionValue& InputActio
 	}
 }
 
-void AWheelOfTimePlayerController::LookInput()
+void AWheelOfTimePlayerController::LookInput(const FInputActionValue& InputActionValue)
 {
 	FHitResult Hit;
 	FRotator CursorRotation(FRotator::ZeroRotator);
@@ -79,4 +78,3 @@ void AWheelOfTimePlayerController::LookInput()
 		MyPawn->SetActorRotation(CursorRotation);
 	}
 }
-

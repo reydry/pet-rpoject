@@ -2,12 +2,22 @@
 
 #include "Core/Enemies/WOFEnemy.h"
 #include "AbilitySystemComponent.h"
+#include "Core/Components/WOFHealthWidgetComponent.h"
 
 AWOFEnemy::AWOFEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
 	AbilitySystem = CreateDefaultSubobject<UAbilitySystemComponent>("ASC");
+	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("StaticMeshComponent");
+
+	SetRootComponent(StaticMeshComponent);
+
+	if (!IsValid(HealthWidgetComponent))
+	{
+		HealthWidgetComponent = CreateDefaultSubobject<UWOFHealthWidgetComponent>("HealthWidgetComponent");
+		HealthWidgetComponent->SetupAttachment(StaticMeshComponent);
+	}
 }
 
 void AWOFEnemy::BeginPlay()
@@ -17,11 +27,6 @@ void AWOFEnemy::BeginPlay()
 	SetupAbilitySystem();
 	SetupHealthBar();
 	SubscribeToDelegates();
-}
-
-void AWOFEnemy::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 }
 
 UAbilitySystemComponent* AWOFEnemy::GetAbilitySystemComponent() const
@@ -42,6 +47,7 @@ void AWOFEnemy::SetupAbilitySystem()
 
 void AWOFEnemy::SetupHealthBar()
 {
+	HealthWidgetComponent->InitComponentData(AbilitySystem);
 }
 
 void AWOFEnemy::OnDeath()

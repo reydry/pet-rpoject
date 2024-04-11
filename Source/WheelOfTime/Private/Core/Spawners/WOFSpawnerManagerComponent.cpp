@@ -2,6 +2,7 @@
 
 #include "Core/Spawners/WOFSpawnerManagerComponent.h"
 
+#include "Core/Spawners/WOFBaseSpawner.h"
 #include "Kismet/GameplayStatics.h"
 
 UWOFSpawnerManagerComponent::UWOFSpawnerManagerComponent()
@@ -25,8 +26,8 @@ void UWOFSpawnerManagerComponent::SpawnEnemies()
 void UWOFSpawnerManagerComponent::InitSpawners()
 {
 	TArray<AActor*> OutActors;
-	//TODO: add base spawner class;
-	UGameplayStatics::GetAllActorsOfClass(this, AActor::StaticClass(), OutActors);
+	
+	UGameplayStatics::GetAllActorsOfClass(this, AWOFBaseSpawner::StaticClass(), OutActors);
 
 	for (AActor* Actor : OutActors)
 	{
